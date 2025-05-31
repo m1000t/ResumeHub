@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDCrbanH3bFcgaULevJ_0C7dGf2TrzI7FE",
   authDomain: "resumehub-76d44.firebaseapp.com",

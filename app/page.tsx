@@ -12,11 +12,20 @@ import {
   orderBy,
 } from "firebase/firestore";
 
+type Resume = {
+  id: string;
+  name: string;
+  uploadedBy: string;
+  uploadedAt: any; // Or `Date | string` if you want to be specific
+  url: string;
+  status?: string; // Optional for uploading states
+};
+
 const TABS = ["All", "My Uni", "Tech", "Finance", "Trending"];
 
 export default function ResumeHub() {
   const fileInputRef = useRef(null);
-  const [resumes, setResumes] = useState([]);
+  const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
