@@ -26,9 +26,12 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ## 🌐 Live Demo
 
-[Check out ResumeHub Live!](https://resumehub-<your-vercel-url>.vercel.app)
+[Check out ResumeHub Live!]([https://resumehub-<your-vercel-url>.vercel.app](https://resumehub-vert.vercel.app/))
 
 ## 📦 Getting Started
+
+![image](https://github.com/user-attachments/assets/6fe69a9d-48a1-401a-bc88-0c1040046740)
+
 
 1. **Clone the repo:**
    ```bash
