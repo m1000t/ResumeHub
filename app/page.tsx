@@ -138,6 +138,7 @@ export default function ResumeHub() {
         const resumesList = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
+          ...(doc.data() as Omit<Resume, "id">),
         }));
         setResumes(resumesList);
       } catch (err) {
