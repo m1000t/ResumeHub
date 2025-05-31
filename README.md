@@ -4,8 +4,9 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ---
 
-![ResumeHub Screenshot](![image](https://github.com/user-attachments/assets/3051264e-60b5-44a2-85cb-c9e309832710)
-)
+<p align="center">
+  <img src="./screenshot.png" alt="ResumeHub UI Screenshot" width="700"/>
+</p>
 
 ---
 
@@ -27,12 +28,9 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ## 🌐 Live Demo
 
-[Check out ResumeHub Live!]([https://resumehub-<your-vercel-url>.vercel.app](https://resumehub-vert.vercel.app/))
+[https://resumehub-vert.vercel.app/](https://resumehub-vert.vercel.app/)
 
 ## 📦 Getting Started
-
-
-
 
 1. **Clone the repo:**
    ```bash
