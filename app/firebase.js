@@ -1,7 +1,8 @@
-// Import the functions you need from the SDKs you need
+// firebase.js
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-
+import { getStorage } from "firebase/storage";
+import { getFirestore } from "firebase/firestore";
 const firebaseConfig = {
   apiKey: "AIzaSyDCrbanH3bFcgaULevJ_0C7dGf2TrzI7FE",
   authDomain: "resumehub-76d44.firebaseapp.com",
@@ -10,9 +11,11 @@ const firebaseConfig = {
   messagingSenderId: "880026329092",
   appId: "1:880026329092:web:2be6afa3c3c1cea6315551",
 };
-
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const storage = getStorage(app);
+const db = getFirestore(app);
 
-export { auth, provider };
+export { auth, provider, storage, db };

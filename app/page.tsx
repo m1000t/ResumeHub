@@ -1,20 +1,46 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, provider } from "./firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, provider, storage, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
 const TABS = ["All", "My Uni", "Tech", "Finance", "Trending"];
-const storage = getStorage();
 
 export default function ResumeHub() {
   const fileInputRef = useRef(null);
   const [resumes, setResumes] = useState([]);
   const [selectedResume, setSelectedResume] = useState(null);
-  const [comments, setComments] = useState({});
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComments, setNewComments] = useState({});
   const [tab, setTab] = useState(TABS[0]);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // ----------- Load resumes from Firestore -----------
+  useEffect(() => {
+    async function fetchResumes() {
+      setLoading(true);
+      const resumesCol = collection(db, "resumes");
+      const q = query(resumesCol, orderBy("uploadedAt", "desc"));
+      const snapshot = await getDocs(q);
+      const resumesList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setResumes(resumesList);
+      setLoading(false);
+    }
+    fetchResumes();
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
@@ -22,6 +48,26 @@ export default function ResumeHub() {
     });
     return () => unsub();
   }, []);
+
+  // Load comments when a resume is selected
+  useEffect(() => {
+    async function fetchComments() {
+      if (!selectedResume) return;
+      setCommentsLoading(true);
+      const commentsRef = collection(
+        db,
+        "resumes",
+        selectedResume.id,
+        "comments"
+      );
+      const q = query(commentsRef, orderBy("createdAt", "asc"));
+      const snap = await getDocs(q);
+      const allComments = snap.docs.map((doc) => doc.data());
+      setComments(allComments);
+      setCommentsLoading(false);
+    }
+    fetchComments();
+  }, [selectedResume]);
 
   // Auth
   const handleGoogleSignIn = async () => {
@@ -35,19 +81,19 @@ export default function ResumeHub() {
     await signOut(auth);
   };
 
-  // Upload
+  // ---------- Upload & Save Resume Info to Firestore ----------
   const handleUploadClick = () => {
     if (user) fileInputRef.current.click();
     else alert("Please sign in to upload resumes.");
   };
+
   const handleFileChange = async (e) => {
     if (e.target.files.length > 0 && user) {
       const file = e.target.files[0];
-      const id = `resume-${Date.now()}`;
       setResumes((prev) => [
         ...prev,
         {
-          id,
+          id: `uploading-${Date.now()}`,
           name: file.name,
           uploadedBy: user.displayName || "You",
           uploadedAt: new Date().toLocaleString(),
@@ -55,35 +101,59 @@ export default function ResumeHub() {
         },
       ]);
       try {
+        const id = `resume-${Date.now()}`;
         const storageRef = ref(storage, `resumes/${id}_${file.name}`);
         await uploadBytes(storageRef, file);
         const url = await getDownloadURL(storageRef);
-        setResumes((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, url, status: "Uploaded" } : r))
-        );
+
+        // --- Save metadata to Firestore ---
+        await addDoc(collection(db, "resumes"), {
+          name: file.name,
+          uploadedBy: user.displayName || "You",
+          uploadedAt: serverTimestamp(),
+          url,
+        });
+
+        // Reload resumes from Firestore
+        const resumesCol = collection(db, "resumes");
+        const q = query(resumesCol, orderBy("uploadedAt", "desc"));
+        const snapshot = await getDocs(q);
+        const resumesList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setResumes(resumesList);
       } catch (err) {
         alert("Upload failed: " + err.message);
-        setResumes((prev) => prev.filter((r) => r.id !== id));
       }
       e.target.value = "";
     }
   };
 
-  // Comments (local state for demo)
-  const handleAddComment = (resumeId) => {
+  // Comments - Save to Firestore and reload
+  const handleAddComment = async (resumeId) => {
     if (!user) {
       alert("Sign in to comment!");
       return;
     }
     const text = newComments[resumeId]?.trim();
     if (!text) return;
-    setComments((prev) => ({
-      ...prev,
-      [resumeId]: [
-        ...(prev[resumeId] || []),
-        { user: user.displayName || "You", text, timestamp: "now", upvotes: 0 },
-      ],
-    }));
+
+    // Firestore add
+    await addDoc(collection(db, "resumes", resumeId, "comments"), {
+      user: user.displayName || "You",
+      text,
+      createdAt: serverTimestamp(),
+      upvotes: 0,
+    });
+
+    // Refetch comments
+    const commentsRef = collection(db, "resumes", resumeId, "comments");
+    const q = query(commentsRef, orderBy("createdAt", "asc"));
+    const snap = await getDocs(q);
+    const allComments = snap.docs.map((doc) => doc.data());
+    setComments(allComments);
+
     setNewComments((prev) => ({ ...prev, [resumeId]: "" }));
   };
 
@@ -181,49 +251,57 @@ export default function ResumeHub() {
             <h3 className="font-semibold text-lg mb-4 text-gray-700">
               Recent Resume Uploads
             </h3>
-            <div className="space-y-6">
-              {resumes.length === 0 && (
-                <div className="text-gray-500 text-center py-16">
-                  No resumes uploaded yet.
-                </div>
-              )}
-              {resumes.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between border-b py-5"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                      {/* User Icon */}
-                      <svg
-                        width="32"
-                        height="32"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle cx="12" cy="8" r="4" fill="#E5E7EB" />
-                        <ellipse cx="12" cy="17" rx="7" ry="5" fill="#E5E7EB" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        {r.uploadedBy}
-                      </div>
-                      <div className="text-gray-700">{r.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {(comments[r.id] || []).length} Comments
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedResume(r)}
-                    className="text-blue-600 font-medium hover:underline text-base"
+            {loading ? (
+              <div className="text-gray-500 text-center py-16">
+                Loading resumes...
+              </div>
+            ) : resumes.length === 0 ? (
+              <div className="text-gray-500 text-center py-16">
+                No resumes uploaded yet.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {resumes.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between border-b py-5"
                   >
-                    View Resume
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                        {/* User Icon */}
+                        <svg
+                          width="32"
+                          height="32"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle cx="12" cy="8" r="4" fill="#E5E7EB" />
+                          <ellipse
+                            cx="12"
+                            cy="17"
+                            rx="7"
+                            ry="5"
+                            fill="#E5E7EB"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">
+                          {r.uploadedBy}
+                        </div>
+                        <div className="text-gray-700">{r.name}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedResume(r)}
+                      className="text-blue-600 font-medium hover:underline text-base"
+                    >
+                      View Resume
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -245,7 +323,6 @@ export default function ResumeHub() {
 
   // === RESUME DETAIL VIEW ===
   const r = selectedResume;
-  const resumeComments = comments[r.id] || [];
 
   return (
     <main className="min-h-screen bg-[#f7f9fb] flex flex-col items-center">
@@ -304,24 +381,31 @@ export default function ResumeHub() {
           Comments & Feedback
         </h3>
         <div className="space-y-4 mb-4">
-          {resumeComments.length === 0 && (
+          {commentsLoading ? (
+            <div className="text-blue-500">Loading comments...</div>
+          ) : comments.length === 0 ? (
             <div className="text-blue-500">No comments yet.</div>
+          ) : (
+            comments.map((c, i) => (
+              <div
+                key={i}
+                className="bg-gray-50 rounded p-3 shadow-sm flex flex-col gap-1"
+              >
+                <div className="font-medium flex items-center gap-2">
+                  <span>{c.user}</span>
+                  <span className="text-xs text-gray-400">
+                    {c.createdAt?.toDate
+                      ? c.createdAt.toDate().toLocaleString()
+                      : ""}
+                  </span>
+                </div>
+                <div className="text-gray-700">{c.text}</div>
+                <div className="text-xs text-gray-500">
+                  {c.upvotes > 0 && `↑ ${c.upvotes} upvotes`}
+                </div>
+              </div>
+            ))
           )}
-          {resumeComments.map((c, i) => (
-            <div
-              key={i}
-              className="bg-gray-50 rounded p-3 shadow-sm flex flex-col gap-1"
-            >
-              <div className="font-medium flex items-center gap-2">
-                <span>{c.user}</span>
-                <span className="text-xs text-gray-400">{c.timestamp}</span>
-              </div>
-              <div className="text-gray-700">{c.text}</div>
-              <div className="text-xs text-gray-500">
-                {c.upvotes > 0 && `↑ ${c.upvotes} upvotes`}
-              </div>
-            </div>
-          ))}
         </div>
         <div className="flex items-center gap-2">
           <input
