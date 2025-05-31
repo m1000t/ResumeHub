@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Node dependencies
+node_modules/
+
+# Build output
+.next/
+
+# Local environment variables
+.env.local
+.env
+.env.*
+
