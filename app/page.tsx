@@ -21,13 +21,20 @@ type Resume = {
   status?: string; // Optional for uploading states
 };
 
+type Comment = {
+  user: string;
+  text: string;
+  timestamp: string;
+  upvotes?: number;
+};
+
 const TABS = ["All", "My Uni", "Tech", "Finance", "Trending"];
 
 export default function ResumeHub() {
   const fileInputRef = useRef(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState(null);
-  const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComments, setNewComments] = useState({});
   const [tab, setTab] = useState(TABS[0]);
@@ -107,6 +114,7 @@ export default function ResumeHub() {
           uploadedBy: user.displayName || "You",
           uploadedAt: new Date().toLocaleString(),
           status: "Uploading...",
+          url: "", // <-- ADD THIS LINE
         },
       ]);
       try {
