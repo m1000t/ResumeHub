@@ -5,8 +5,7 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 ---
 
 <p align="center">
-  <img src="![image](https://github.com/user-attachments/assets/04f13c49-48de-401e-8ccf-5fbb3dc17a22)
-)
+  <img src="![image](https://github.com/user-attachments/assets/5c8f32b7-b089-4a2b-aee6-60a7766ed50e)
 " alt="ResumeHub UI Screenshot" width="700"/>
 </p>
 
