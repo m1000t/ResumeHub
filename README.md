@@ -4,7 +4,8 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ---
 
-![ResumeHub Screenshot](./screenshot.png)
+![ResumeHub Screenshot](![image](https://github.com/user-attachments/assets/3051264e-60b5-44a2-85cb-c9e309832710)
+)
 
 ---
 
@@ -30,7 +31,7 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ## 📦 Getting Started
 
-![image](https://github.com/user-attachments/assets/6fe69a9d-48a1-401a-bc88-0c1040046740)
+
 
 
 1. **Clone the repo:**
