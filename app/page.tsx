@@ -3,6 +3,9 @@ import { useRef, useState, useEffect } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, provider, storage, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import type { User } from "firebase/auth";
+import type { DocumentData } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 import {
   collection,
   addDoc,
@@ -16,29 +19,28 @@ type Resume = {
   id: string;
   name: string;
   uploadedBy: string;
-  uploadedAt: any; // Or `Date | string` if you want to be specific
+  uploadedAt: any; // Or Date|string
   url: string;
-  status?: string; // Optional for uploading states
+  status?: string;
 };
 
 type Comment = {
   user: string;
   text: string;
-  timestamp: string;
+  createdAt?: Timestamp; // use "any" if you want to be loose
   upvotes?: number;
 };
-
 const TABS = ["All", "My Uni", "Tech", "Finance", "Trending"];
 
 export default function ResumeHub() {
-  const fileInputRef = useRef(null);
-  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
-  const [selectedResume, setSelectedResume] = useState(null);
+  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
-  const [newComments, setNewComments] = useState({});
+  const [newComments, setNewComments] = useState<{ [key: string]: string }>({});
   const [tab, setTab] = useState(TABS[0]);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ----------- Load resumes from Firestore -----------
@@ -79,7 +81,9 @@ export default function ResumeHub() {
       );
       const q = query(commentsRef, orderBy("createdAt", "asc"));
       const snap = await getDocs(q);
-      const allComments = snap.docs.map((doc) => doc.data());
+      const allComments: Comment[] = snap.docs.map(
+        (doc) => doc.data() as Comment
+      );
       setComments(allComments);
       setCommentsLoading(false);
     }
@@ -91,7 +95,11 @@ export default function ResumeHub() {
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
-      alert("Sign in failed: " + err.message);
+      if (err instanceof Error) {
+        alert("Sign in failed: " + err.message);
+      } else {
+        alert("Sign in failed: " + String(err));
+      }
     }
   };
   const handleSignOut = async () => {
@@ -100,12 +108,12 @@ export default function ResumeHub() {
 
   // ---------- Upload & Save Resume Info to Firestore ----------
   const handleUploadClick = () => {
-    if (user) fileInputRef.current.click();
+    if (user) fileInputRef.current?.click();
     else alert("Please sign in to upload resumes.");
   };
 
-  const handleFileChange = async (e) => {
-    if (e.target.files.length > 0 && user) {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && user) {
       const file = e.target.files[0];
       setResumes((prev) => [
         ...prev,
@@ -143,14 +151,19 @@ export default function ResumeHub() {
         }));
         setResumes(resumesList);
       } catch (err) {
-        alert("Upload failed: " + err.message);
+        if (err instanceof Error) {
+          alert("Upload failed: " + err.message);
+        } else {
+          alert("Upload failed: " + String(err));
+        }
       }
+
       e.target.value = "";
     }
   };
 
   // Comments - Save to Firestore and reload
-  const handleAddComment = async (resumeId) => {
+  const handleAddComment = async (resumeId: string) => {
     if (!user) {
       alert("Sign in to comment!");
       return;
@@ -170,7 +183,7 @@ export default function ResumeHub() {
     const commentsRef = collection(db, "resumes", resumeId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "asc"));
     const snap = await getDocs(q);
-    const allComments = snap.docs.map((doc) => doc.data());
+    const allComments = snap.docs.map((doc) => doc.data() as Comment);
     setComments(allComments);
 
     setNewComments((prev) => ({ ...prev, [resumeId]: "" }));
@@ -420,7 +433,9 @@ export default function ResumeHub() {
                 </div>
                 <div className="text-gray-700">{c.text}</div>
                 <div className="text-xs text-gray-500">
-                  {c.upvotes > 0 && `↑ ${c.upvotes} upvotes`}
+                  {typeof c.upvotes === "number" &&
+                    c.upvotes > 0 &&
+                    `↑ ${c.upvotes} upvotes`}{" "}
                 </div>
               </div>
             ))
