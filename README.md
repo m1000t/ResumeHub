@@ -4,8 +4,7 @@ A modern platform for uploading, sharing, and getting feedback on resumes — de
 
 ---
 
-![Uploading image.png…]()
-
+![image](https://github.com/user-attachments/assets/806e2d4a-8e90-449c-acd7-daa0e06e2b27)
 
 ---
 
